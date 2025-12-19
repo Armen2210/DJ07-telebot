@@ -14,6 +14,8 @@ def register_user(request):
         defaults={
             'username': data.get('username', ''),}
     )
-    serializer = TelegramUserSerializer(user)
-    return Response(serializer.data)
-
+    if created:
+        serializer = TelegramUserSerializer(user)
+        return Response(serializer.data)
+    else:
+        return Response({'error': 'User already exists'}, status=400)

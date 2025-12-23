@@ -7,12 +7,8 @@ BOT_TOKEN = "8510736380:AAGUqoCF48JSD6kafMyY8gp1tesUnQuTJqE"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-
-
-
-
 @bot.message_handler(commands=['start'])
-def start_command(message):
+def start_command(message: Message):
     data = {
         "user_id": message.from_user.id,
         "username": message.from_user.username

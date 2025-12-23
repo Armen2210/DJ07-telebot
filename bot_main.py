@@ -11,20 +11,49 @@ bot = telebot.TeleBot(BOT_TOKEN)
 def start_command(message: Message):
     data = {
         "user_id": message.from_user.id,
-        "username": message.from_user.username
+        "username": message.from_user.username or ""
     }
     response = requests.post(API_URL + "/register/", json=data)
-    if response.status_code == 200:
-        if response.json().get('message'):
+
+    try:
+        resp_json = response.json()
+    except ValueError:
+        resp_json = None
+
+    # 1) Успешная регистрация
+    if response.status_code in (200, 201) and isinstance(resp_json, dict):
+        bot.send_message(
+            message.chat.id,
+            f"Вы успешно зарегистрированы! Ваш уникальный номер: {resp_json.get('id')}"
+        )
+        return
+
+    # 2) Пользователь уже есть (твой API возвращает 400 с error)
+    if response.status_code == 400 and isinstance(resp_json, dict):
+        err = (resp_json.get("error") or "").lower()
+        if "already exists" in err or "exists" in err:
             bot.send_message(message.chat.id, "Вы уже были зарегистрированы ранее!")
-        else:
-            bot.send_message(message.chat.id,
-                             f"Вы успешно зарегистрированы! Ваш уникальный номер: {response.json()['id']}")
+            return
+
+    # 3) Любая другая ошибка
+    bot.send_message(message.chat.id, "Произошла ошибка при регистрации!")
+    print("STATUS:", response.status_code)
+    print("TEXT:", response.text)
+    print("JSON:", resp_json)
+
+@bot.message_handler(commands=['myinfo'])
+def user_info(message: Message):
+    response = requests.get(f"{API_URL}/user/{message.from_user.id}/")
+
+    if response.status_code == 200:
+        bot.reply_to(message, f"Ваша регистрация:\n\n{response.json()}")
+    elif response.status_code == 404:
+        bot.send_message(message.chat.id, "Вы не зарегистрированы!")
     else:
-        bot.send_message(message.chat.id, f"Произошла ошибка при регистрации!")
-        print(response.json())
-        print(response.status_code)
-        print(response.text)
+        bot.send_message(message.chat.id, "Непредвиденная ошибка!")
+
+
+
 
 
 if __name__ == "__main__":
